@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en" class="html" id="html">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Virtual Casino</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div id="page">
+        <div id="header"></div>
+        <div id="root"></div>
+    </div>
+
+    <!-- The core Firebase JS SDK is always required and must be listed first -->
+    <script src="https://www.gstatic.com/firebasejs/8.4.3/firebase-app.js"></script>
+
+    <!-- TODO: Add SDKs for Firebase products that you want to use
+    https://firebase.google.com/docs/web/setup#available-libraries -->
+    <script src="https://www.gstatic.com/firebasejs/8.4.3/firebase-analytics.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.4.3/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.4.3/firebase-database.js"></script>
+
+    <script>
+        // Your web app's Firebase configuration
+        // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+        var firebaseConfig = {
+            apiKey: "AIzaSyC_FnGq1Dmrq4NOwEIh0_vhG7ujdsqdxiA",
+            authDomain: "final-8d52f.firebaseapp.com",
+            projectId: "final-8d52f",
+            storageBucket: "final-8d52f.appspot.com",
+            messagingSenderId: "879669249626",
+            appId: "1:879669249626:web:81cf831e6f86851fb33a63",
+            measurementId: "G-W1V8GC2BER",
+            databaseURL: "https://final-8d52f-default-rtdb.firebaseio.com/"
+        };
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        firebase.analytics();
+    </script>
+
+    <script 
+        src="https://code.jquery.com/jquery-3.6.0.js"
+        integrity="sha256-H+K7U5CnXl1h5ywQfKtSj8PCmoN9aaq30gDh27Xc0jk=" 
+        crossorigin="anonymous">
+    </script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    
+    <script src="main.js" type="module"></script>
+</body>
+
+</html>
