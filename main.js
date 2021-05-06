@@ -1,8 +1,9 @@
 // import axios from 'axios';
 import Blackjack from './blackjack.js';
 
-export function renderBlackjack() {
-    const game = newGame();
+export async function renderBlackjack() {
+    console.log("renderBlackjack")
+    const game = await newGame();
     const $page = $('#page');
     $page.on("click", "#submit_initial_bet_button", (event) => placeInitialBet(game));
     $page.on("click", "#yes_insurance_button", (event) => handleYesNoPress(event, game));
@@ -14,15 +15,42 @@ export function renderBlackjack() {
     $page.on("click", "#double_down_button", (event) => handleDD(game));
 }
 
-export function newGame() {
+export async function newGame() {
+    console.log("newGame")
     let game = new Blackjack();
     game.clearGame();
+    console.log("new game:")
+    console.log(game)
     const $root = $('#root');
 
     //clear page if anything remains
     $('#game').remove();
     $root.empty();
 
+    //get user's tokens
+    const user = await getCurrentUser();
+    if (user) {
+        const uid = user.uid;
+        let points;
+        firebase.database().ref('/users/' + uid + '/points').get().then((snapshot) => {
+            if (snapshot.exists()) {
+                points = snapshot.val();
+                loadBlackjackBase(game, points);
+            } 
+        }).catch((error) => {
+            errorMessage();
+            console.error(error);
+            return;
+        })
+    } else {
+        loadBlackjackBase(game);
+    }
+    return game;
+}
+
+export function loadBlackjackBase(game, points) {
+    console.log("loadBlackjackBase");
+    const $root = $('#root');
     //add blackjack header and button box and set place for game
     const header =
         `<div class="header">
@@ -31,6 +59,7 @@ export function newGame() {
         </div>
         <div class="message_box">
             <h2 class="message">Place your bet. Minimum is 5. Maximum is 50.</h2>
+            <h2 id="bet_message"></h2>
             <div class="play_buttons">
                 <div class="input_bet">
                     <input type="number" id="initial_bet_input" min="5" max="50" value="5">
@@ -40,11 +69,18 @@ export function newGame() {
         </div>
         <div id="game"></div>`;
 
+    //append all to root
     $root.append(header);
-    return game;
+    //if user is signed in, add their tokens
+    if (points !== undefined) {
+        $('#tokens').text("Your Tokens: " + points);
+    } else {
+        $('#tokens').text("Sign up or log in to see your tokens.")
+    }
 }
 
 export async function placeInitialBet(game) {
+    console.log("placeInitialBet");
     let bet;
     //pull value from input
     const initial_bet = parseInt($('#initial_bet_input').val());
@@ -57,10 +93,11 @@ export async function placeInitialBet(game) {
     //remove betting input & button
     $('.input_bet').remove();
     //load the game
-    loadBlackjack(game, bet);
+    await loadBlackjack(game, bet);
 }
 
 export async function loadBlackjack(game, bet) {
+    console.log("loadBlackjack")
     const $game = $('#game');
     //get a new deck, shuffle it and draw 4 cards
     const deck = await axios({
@@ -77,7 +114,8 @@ export async function loadBlackjack(game, bet) {
     // deal out cards
     game.player.cards.push(deck.data['cards'][0], deck.data['cards'][2]);
     game.dealer.cards.push(deck.data['cards'][1], deck.data['cards'][3]);
-    // const cards =  [
+
+    // let draw = [
     //     {
     //         "image": "https://deckofcardsapi.com/static/img/KH.png",
     //         "value": "KING",
@@ -97,14 +135,16 @@ export async function loadBlackjack(game, bet) {
     //         "code": "KS"
     //     },
     //     {
-    //         "image": "https://deckofcardsapi.com/static/img/AH.png",
-    //         "value": "ACE",
-    //         "suit": "HEARTS",
-    //         "code": "AH"
+    //         "image": "https://deckofcardsapi.com/static/img/4C.png",
+    //         "value": "4",
+    //         "suit": "CLUBS",
+    //         "code": "8C"
     //     }
     // ]
-    // game.player.cards.push(cards[0], cards[2]);
-    // game.dealer.cards.push(cards[1], cards[3]);
+    // game.player.cards.push(draw[0], draw[2]);
+    // game.dealer.cards.push(draw[1], draw[3]);
+    
+
     //set initial bet & total bet
     game.player.bets.initial = bet;
     game.player.bets.total = bet;
@@ -146,16 +186,16 @@ export async function loadBlackjack(game, bet) {
         insuranceBet(game);
     } else {
         //take normal route
-        addPlayOptionButtons(game.player.cards[0], game.player.cards[1]);
+        addPlayOptionButtons(game.player.cards[0], game.player.cards[1], false);
     }
 }
 
 export function insuranceBet(game) {
+    console.log("insuranceBet")
     //update message
     $('.message').text("Dealer is showing an ace. Would you like to place an insurance bet? Maximum bet is half your initial bet.");
     //add insurance options
-    // console.log(game);
-    const max = game.player.bets.initial/2
+    const max = Math.floor(game.player.bets.initial/2);
     const insurance =
         `<div class="insurance">
             <input id="insurance_bet_input" type="number" min=1 max=${max} value=${max}>
@@ -166,6 +206,7 @@ export function insuranceBet(game) {
 }
 
 export function handleYesNoPress(event, game) {
+    console.log("handleYesNoPress")
     //grab id of button pressed
     const id = event.target.id;
     //if yes, save bet & update bets
@@ -191,6 +232,7 @@ export function handleYesNoPress(event, game) {
 }
 
 export function addPlayOptionButtons(card1, card2, bool) {
+    console.log("addPlayOptionButtons")
     if (!bool) {
         //add normal button options
         $('.message').text("Do you want to hit, stand or double down?");
@@ -209,12 +251,11 @@ export function addPlayOptionButtons(card1, card2, bool) {
     } else {
         //add normal button options
         $('.message').text("Dealer did not have Blackjack. Do you want to hit, stand or double down?");
-        $('.play_buttons').replaceWith(
-            `<div class=play_buttons>
-                <button id=hit_button>Hit</button>
-                <button id=stand_button>Stand</button>
-                <button id=double_down_button>Double Down</button>
-            </div>`
+        $('.play_buttons').empty();
+        $('.play_buttons').append(
+            `<button id="hit_button">Hit</button>
+            <button id="stand_button">Stand</button>
+            <button id="double_down_button">Double Down</button>`
         )
         //if cards are the same, add option to split
         if (card1.value === card2.value) {
@@ -225,14 +266,21 @@ export function addPlayOptionButtons(card1, card2, bool) {
 }
 
 export async function handleSplit(game) {
+    console.log("handleSplit")
     //pull deck id to create url for API request
     const deck_id = game.deck_id;
     const url = 'https://deckofcardsapi.com/api/deck/' + deck_id + '/draw/?count=2'
     //draw 2 new cards
-    const draw = await axios({
-        method: 'get',
-        url: url
-    });
+    let draw;
+    try {
+        draw = await axios({
+            method: 'get',
+            url: url
+        });
+    } catch (error) {
+        $('.message').text("Something may have gone wrong. Try again.");
+        return;
+    }
     //if not successful, show error and stop code
     if (!draw.data['success']) {
         errorMessage();
@@ -278,7 +326,7 @@ export async function handleSplit(game) {
 }
 
 export function loadSplitCards(game) {
-    console.log("loading split cards");
+    console.log("loadSplitCards")
     //empty out player cards
     $('#player_cards').empty();
     //set split bet
@@ -291,7 +339,7 @@ export function loadSplitCards(game) {
         //if hand has already been played, load the cards for it
         if (i < game.player.split.pointer) {
             const id = "#hand_" + i+1 + "";
-            cards += $(id);
+            cards += $(id).html;
         } else {
             //if hand hasn't been played, load the cards for it
             const card = 
@@ -316,22 +364,29 @@ export function loadSplitCards(game) {
 }
 
 export async function handleHit(game) {
-    console.log("handling hit")
-    //remove double down button, no longer an option for this hand
-    $('#double_down_button').remove();
+    console.log("handleHit")
     //pull deck id to create url for API request
     const deck_id = game.deck_id;
     const url = 'https://deckofcardsapi.com/api/deck/' + deck_id + '/draw/?count=1'
     //draw 1 new card
-    const draw = await axios({
-        method: 'get',
-        url: url
-    });
+    let draw
+    try {
+        draw = await axios({
+            method: 'get',
+            url: url
+        });
+    } catch (error) {
+        $('.message').text("Something may have gone wrong. Try again.");
+        return;
+    }
+    $('.message').text("Hit or stand.");
     //if not successful, show error and stop code
     if (!draw.data['success']) {
         errorMessage();
         return;
     }
+    //remove double down button, no longer an option for this hand
+    $('#double_down_button').remove();
     //if hand hasn't been split
     if (!game.player.been_split) {
         //add card to cards
@@ -354,6 +409,7 @@ export async function handleHit(game) {
     } else {
         //get pointer
         const index = game.player.split.pointer;
+        console.log("pointer: " + index);
         //add card to split hand pointer is at
         game.player.split.cards[index].push(draw.data['cards'][0]);
         //update score at pointer
@@ -362,18 +418,15 @@ export async function handleHit(game) {
         $(id).text("Score: " + game.player.split.scores[index]);
         //add card to DOM
         const ref = "#hand_" + (index+1) + "";
-        const length = game.player.split.cards.length;
+        const length = game.player.split.cards[index].length;
         $(ref).append(`<img src=${game.player.split.cards[index][length-1].image} alt="${game.player.split.cards[index][length-1].value}">`);
-        console.log("score: " + game.player.split.scores[index]);
-        console.log("double down? " + game.player.split.double_down[index]);
         //if hand busts or has 21
         if (game.player.split.scores[index] >= 21 && !game.player.split.double_down[index]) {
-            console.log("checkpoint 1")
             //remove pointer class from current card at pointer
             const id_1 = "#hand_" + (game.player.split.pointer+1) + "";
             $(id_1).removeAttr("class", "pointer");
             //if last hand in split cards
-            if (length === index+1) {
+            if (game.player.split.cards.length === index+1) {
                 //end of player's turn
                 dealerPlay(game)
             } else {
@@ -385,10 +438,8 @@ export async function handleHit(game) {
                 $(id_2).attr("class", "pointer");
             }
         } else if (game.player.split.double_down[index]) {
-            console.log("checkpoint 2")
             handleStand(game);
         } else {
-            console.log("checkpoint 3")
             $('.message').text("Hit or stand.");
         }
 
@@ -396,7 +447,7 @@ export async function handleHit(game) {
 }
 
 export async function handleStand(game) {
-    console.log("handing stand");
+    console.log("handleStand")
     //if hand hasn't been split, dealer's turn
     if (!game.player.been_split) {
         dealerPlay(game);
@@ -424,6 +475,7 @@ export async function handleStand(game) {
 }
 
 export function handleDD(game) {
+    console.log("handleDD")
     //if no split hands
     if (!game.player.been_split) {
         game.player.double_down = true;
@@ -451,7 +503,7 @@ export function handleDD(game) {
 }
 
 export async function dealerPlay(game) {
-    console.log("dealer playing")
+    console.log("dealerPlay");
     $('#face_down_card').replaceWith(`<img src=${game.dealer.cards[0].image} alt="${game.dealer.cards[0].value}"></img>`);
     $('#dealer_score').text("Score: " + game.dealer.score);
     if (game.dealer.score < 17) {
@@ -462,15 +514,21 @@ export async function dealerPlay(game) {
 }
 
 export async function dealerDraw(game) {
-    console.log("dealer drawing")
+    console.log("dealerDraw")
     //pull deck id to create url for API request
     const deck_id = game.deck_id;
     const url = 'https://deckofcardsapi.com/api/deck/' + deck_id + '/draw/?count=1'
     //draw 1 new card
-    const draw = await axios({
-        method: 'get',
-        url: url
-    });
+    let draw;
+    try {
+        draw = await axios({
+            method: 'get',
+            url: url
+        });
+    } catch (error) {
+        dealerDraw(game);
+        return;
+    }
     //if not successful, show error and stop code
     if (!draw.data['success']) {
         errorMessage();
@@ -492,20 +550,39 @@ export async function dealerDraw(game) {
 }
 
 export function gameOver(game) {
+    console.log("gameOver")
+    let won = 0;
+    let lost = 0;
     let message = "";
     if (!game.player.been_split) {
+        //if dealer had Blackjack
+        if (game.dealer.score === 21 && game.dealer.cards[1].value === "ACE" && game.dealer.cards.length === 2) {
+            won += game.player.bets.insurance;
+        } else {
+            lost += game.player.bets.insurance;
+        }
         if (game.dealer.score > 21 && game.player.score > 21) {
             message = "Both busted. Push."
         } else if (game.player.score > 21) {
             message = "You busted. Dealer wins :("
+            lost += game.player.bets.initial + game.player.bets.double_down;
         } else if (game.dealer.score > 21) {
             message = "Dealer busted. You win! :)"
+            won += game.player.bets.initial + game.player.bets.double_down;
+        } else if (game.player.score === 21 && game.player.cards.length == 2 && game.dealer.score !== 21) {
+            message = "You got Blackjack and dealer did not. You win! :)"
+            won += game.player.bets.initial + Math.round(game.player.bets.initial/2);
+        } else if ((game.player.score === 21 && game.dealer.score === 21 && game.player.cards.length === 2 && game.dealer.cards.length > 2)) {
+            message = "You got Blackjack and dealer did not. You win! :)"
+            won += game.player.bets.initial + Math.round(game.player.bets.initial/2);
         } else if (game.player.score > game.dealer.score) {
             message = "You had the higher score. You win! :)"
+            won += game.player.bets.initial + game.player.bets.double_down;
         } else if (game.player.score === game.dealer.score) {
             message = "Both had " + game.player.score + ". Push."
         } else {
             message = "Dealer had the higher score. Dealer wins :("
+            lost += game.player.bets.initial + game.player.bets.double_down;
         }
     } else {
         for (let i=0; i<game.player.split.cards.length; i++) {
@@ -515,23 +592,56 @@ export function gameOver(game) {
                 message += "Both busted. Push. "
             } else if (score > 21) {
                 message += "You busted. Dealer wins :( "
+                //if split hand was doubled down
+                if (game.player.split.double_down[i]) {
+                    lost += game.player.bets.initial + game.player.bets.initial;
+                } else {
+                    lost += game.player.bets.initial;
+                }
             } else if (game.dealer.score > 21) {
                 message += "Dealer busted. You win! :) "
+                //if split hand was doubled down
+                if (game.player.split.double_down[i]) {
+                    won += game.player.bets.initial + game.player.bets.initial;
+                } else {
+                    won += game.player.bets.initial;
+                }
+            } else if (score === 21 && game.player.split.cards[i].length === 2 && game.dealer.score !== 21) {
+                message += "You got Blackjack and dealer did not. You win! :) "
+                won += game.player.bets.initial + Math.round(game.player.bets.initial/2);
+            } else if (score === 21 && game.dealer.score === 21 && game.player.split.cards[i].length === 2 && game.dealer.cards.length > 2) {
+                message += "You got Blackjack and dealer did not. You win! :) "
+                won += game.player.bets.initial + Math.round(game.player.bets.initial/2);
             } else if (score > game.dealer.score) {
                 message += "You had the higher score. You win! :) "
+                //if split hand was doubled down
+                if (game.player.split.double_down[i]) {
+                    won += game.player.bets.initial + game.player.bets.initial;
+                } else {
+                    won += game.player.bets.initial;
+                }
             } else if (score ===  game.dealer.score) {
                 message += "Both had " + score + ". Push."
             } else {
                 message += "Dealer had the higher score. Dealer wins :( "
+                //if split hand was doubled down
+                if (game.player.split.double_down[i]) {
+                    lost += game.player.bets.initial + game.player.bets.initial;
+                } else {
+                    lost += game.player.bets.initial;
+                }
             }
         }
     }
     $('.play_buttons').empty();
     $('.play_buttons').append(`<button id="play_again_button">Play Again</button>`);
     $('.message').text(message);
+    updatePoints1(won, lost)
+    $('#bet_message').text("Won: " + won + " Lost: " + lost);
 }
 
 export function playAgain(game) {
+    console.log("playAgain")
     game.clearGame();
     newGame();
 }
@@ -540,6 +650,323 @@ export function errorMessage() {
     $('.message').text("Error. Something went wrong. No tokens were lost. Try again.");
 }
 
+export function getCurrentUser() {
+    console.log("getCurrentUser")
+    let auth = firebase.auth();
+    return new Promise((resolve, reject) => {
+        const unsubscribe = auth.onAuthStateChanged(user => {
+            unsubscribe();
+            resolve(user)
+        }, reject)
+    })
+}
+
+export function loadSignUpForm() {
+    // create sign up form
+    $('.signup_login').replaceWith(
+        `<div class=signup>
+            <form id=signup_form">
+                <h2>Sign Up</h2>
+                <input type="user_id" id="signup_name" placeholder="Name" minlength=1 required>
+                <input type="email" id="signup_email" placeholder="Email Address" minlength=3 required>
+                <input 
+                    type="password" 
+                    id="signup_password" 
+                    pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9]).{8,}"
+                    placeholder="Password"
+                    minlength=8
+                    title="Must contain at least one number and one uppercase and lowercase letter, and at least 8 or more characters" 
+                required>
+                <button type="submit" id="submit_signup_button">Submit</button>
+            </form>
+        </div>
+        <div class=password_message>
+            <h3>Password must contain the following:</h3>
+            <p id=lowercase class=invalid>A lowercase letter</p>
+            <p id=capital class=invalid>A capital (uppercase) letter</p>
+            <p id=number class=invalid>A number</p>
+            <p id=length class=invalid>Minimum of 8 characters</p>
+        </div>`
+    )
+    
+    const pwd_element = $('#signup_password')
+
+    // when user clicks on password field, message shows up
+    pwd_element.on("focusin", function() {
+        $('.password_message').css("display", "block");
+    })
+
+    //when user goes away from password field, message disappears
+    pwd_element.on("blur", function () {
+        $('.password_message').css("display", "none");
+    })
+
+    // when user starts typing
+    pwd_element.on("keyup", function () {
+        // validate lowercase letter
+        const lowerCaseLetters = /[a-z]/g;
+        if ($('#signup_password').val().match(lowerCaseLetters) != null) {
+            $('#lowercase').removeClass("invalid");
+            $('#lowercase').addClass("valid");
+        } else {
+            $('#lowercase').removeClass("valid");
+            $('#lowercase').addClass("invalid");
+        }
+        // validate capital letter
+        const upperCaseLetters = /[A-Z]/g;
+        if ($('#signup_password').val().match(upperCaseLetters) != null) {
+            $('#capital').removeClass("invalid");
+            $('#capital').addClass("valid");
+        } else {
+            $('#capital').removeClass("valid");
+            $('#capital').addClass("invalid");
+        }
+        //validate numbers
+        const numbers = /[0-9]/g;
+        if ($('#signup_password').val().match(numbers) != null) {
+            $('#number').removeClass("invalid");
+            $('#number').addClass("valid");
+        } else {
+            $('#number').removeClass("valid");
+            $('#number').addClass("invalid");
+        }
+        // validate length
+        if ($('#signup_password').val().length >= 8) {
+            $('#length').removeClass("invalid");
+            $('#length').addClass("valid");
+        } else {
+            $('#length').removeClass("valid");
+            $('#length').addClass("invalid");
+        }
+    })
+
+}
+
+export function handleSubmitSignup(event) {
+    event.preventDefault();
+
+    // pull email and password from form
+    const email = $('#signup_email').val();
+    const password = $('#signup_password').val();
+    const name = $('#signup_name').val();
+
+    // create new user in firebase
+    firebase.auth().createUserWithEmailAndPassword(email, password)
+        .then((userCredential) => {
+            // Signed in
+            setupUser(name, email);
+
+            $('.signup').replaceWith(
+                `<div class=signup_complete>
+                    <h2 class=signup_complete_message></h2>
+                </div>`
+            )
+            
+            $('.signup_complete_message').text("Sign Up Successful. Welcome to the 426 Casino!");
+            updateDisplayName()
+        })
+        .catch((error) => {
+            // show error
+            const errorCode = error.code;
+            let errorMessage = error.message;
+            if (errorCode === 'auth/email-already-in-use') {
+                errorMessage = "An account with this email address already exists. Login or use a different email address."
+            } else if (errorCode === 'auth/invalid-email') {
+                errorMessage = "Email address is invalid."
+            } else if (errorCode === 'auth/operation-not-allowed') {
+                errorMessage = "Email/Password accounts are not enabled. Sign up a different way."
+            } else if (errorCode === 'weak-password') {
+                errorMessage = "Password is not strong enough. Try adding symbols or numbers."
+            } else {
+                errorMessage = "Something went wrong. Try again."
+            }
+            $('.signup').append(`<h2>${errorMessage}</h2>`)
+        });
+}
+
+export async function setupUser(name, email) {
+    const current = await getCurrentUser();
+    current.updateProfile({
+        displayName: name,
+        photoURL: 'https://cdn.business2community.com/wp-content/uploads/2017/08/blank-profile-picture-973460_640.png'
+    }).then(function() {
+    }).catch(function(error) {
+    }) 
+    const database = firebase.database();
+    const users_ref = database.ref('/users');
+    const uid = current.uid;
+    const user_ref = firebase.database().ref('/users/' + uid);
+    user_ref.set({
+        'points': 300,
+        'email': email,
+        'games_played': 0
+    })
+    firebase.auth().onAuthStateChanged(function(user) {
+        if (user) {
+            updateDisplayName();
+        } else {
+            updateDisplayName();
+        }
+    })
+}
+
+export async function updatePoints1(won, lost) {
+    const current = await getCurrentUser();
+    if (current) {
+        const uid = current.uid;
+        let points = 0;
+        let games_played = 0;
+        firebase.database().ref('/users/' + uid + '').get().then((snapshot) => {
+           if (snapshot.exists()) {
+               console.log(snapshot.val())
+            points = snapshot.val().points + won - lost;
+            games_played = snapshot.val().games_played + 1;
+            console.log("points: " + points);
+            console.log("games_played: " + games_played);
+            firebase.database().ref('/users/' + uid).update({'points': points, 'games_played': games_played});
+            $('#tokens').text("Your Tokens: " + (points));
+           }
+        })
+    }
+}
+
+export function loadLoginForm() {
+    // create login form
+    $('.signup_login').replaceWith(
+        `<div class=login>
+            <form id=login_form">
+                <h2>Login</h2>
+                <input type="email" id="login_email" placeholder="Email Address" minlength=3 required>
+                <input 
+                    type="password" 
+                    id="login_password" 
+                    pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9]).{8,}"
+                    placeholder="Password"
+                    minlength=8
+                    title="Must contain at least one number and one uppercase and lowercase letter, and at least 8 or more characters" 
+                required>
+                <button type="submit" id="submit_login_button">Submit</button>
+            </form>
+        </div>`
+    )
+}
+
+export function handleSubmitLogin(event) {
+    event.preventDefault();
+
+    const email = $('#login_email').val();
+    const password = $('#login_password').val();
+
+    firebase.auth().signInWithEmailAndPassword(email, password)
+        .then((userCredential) => {
+            // Signed in
+            var user = userCredential.user;
+            $('.login').replaceWith(
+                `<div class=login_complete>
+                    <h2 class=login_complete_message></h2>
+                </div>`
+            )
+            $('.login_complete_message').text("Login Successful. Welcome to the 426 Casino!");
+        })
+        .catch((error) => {
+            const errorCode = error.code;
+            let errorMessage = error.message;
+            if (errorCode === 'auth/invalid-email') {
+                errorMessage = "Email address is invalid."
+            } else if (errorCode === 'auth/user-disabled') {
+                errorMessage = "This account has been disabled."
+            } else if (errorCode === 'auth/user-not-found') {
+                errorMessage = "There is no user corresponding to the given email. Sign up or login with a different email address."
+            } else if (errorCode === 'wrong-password') {
+                errorMessage = "Password is incorrect."
+            } else {
+                errorMessage = "Something went wrong. Try again."
+            }
+            $('.login').append(`<h2>${errorMessage}</h2>`)
+         });
+    
+    updateDisplayName();
+}
+
+export async function updateDisplayName() {
+    const user = await getCurrentUser();
+    let display_name;
+    if (user === null) {
+        display_name = "Create an account or login!"
+    } else {
+        display_name = "Currently logged in as: " + user.displayName;
+    }
+    $('#display_name').text(display_name);
+}
+
+export function signOut() {
+    firebase.auth().signOut().then(() => {
+        $('.signup_login').replaceWith(
+            `<div class=signup_login>
+                <h1 id="display_name">Create an account or login!</h2>
+                <button id=signup_button>Sign Up</button>
+                <button id=login_button>Login</button>
+            </div>`
+        )
+        console.log("signed out")
+    }).catch((error) => {
+        $('#display_name').text("Sign out unsuccessful. Try again.");
+    })
+}
+
+export async function renderAuthentication() {
+    const $root = $('#root');
+    $root.empty();
+    const user = await getCurrentUser();
+    if (user) {
+        $root.append(
+            `<div class=signup_login>
+                <h1 id="display_name"><h1>
+                <button id=signout_button>Sign Out</button>
+            </div>`
+        )
+    } else {
+        $root.append(
+            `<div class=signup_login>
+                <h1 id="display_name">Create an account or login!</h2>
+                <button id=signup_button>Sign Up</button>
+                <button id=login_button>Login</button>
+            </div>`
+        )
+    }
+    updateDisplayName();
+
+    $root.on("click", "#signup_button", (event) => loadSignUpForm(event));
+    $root.on("click", "#submit_signup_button", (event) => handleSubmitSignup(event));
+    $root.on("click", "#login_button", (event) => loadLoginForm(event));
+    $root.on("click", "#submit_login_button", (event) => handleSubmitLogin(event));
+    $root.on("click", "#signout_button", (event) => signOut());
+}
+
+export async function renderHome() {
+    $('#root').empty()
+    $('#header').replaceWith(
+        `<div class=menu>
+            <h1>426 Virtual Casino</h1>
+            <button class=active id=go_home>Home</button>
+            <button id=go_blackjack>Blackjack</button>
+            <button id=go_authentication></button>
+        </div>`
+    );
+    // updateDisplayName();
+    const $page = $('#page');
+    const user = await getCurrentUser();
+    if (user) {
+        $('#go_authentication').text("My Account")
+    } else {
+        $('#go_authentication').text("Sign Up/Login")
+    }
+
+    $page.on("click", '#go_blackjack', (event) => renderBlackjack());
+    $page.on("click", '#go_authentication', (event) => renderAuthentication());
+    $page.on("click", '#go_home', (event) => renderHome());
+}
+
 $(function() {
-    renderBlackjack();
+    renderHome();
 })

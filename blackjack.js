@@ -30,6 +30,7 @@ export default class Blackjack {
     }
 
     clearGame() {
+        console.log("blackjack clearGame")
         this.player = {
             cards: [],
             score: 0,
@@ -60,6 +61,9 @@ export default class Blackjack {
     }
 
     setSplitScore(index) {
+        console.log("blackjack setSplitScore")
+        console.log("cards at pointer:")
+        console.log(this.player.split.cards[index]);
         const cards = this.player.split.cards[index];
         let score = 0;
         let aces = 0;
@@ -84,9 +88,11 @@ export default class Blackjack {
             }
         }
         this.player.split.scores[index] = score;
+        console.log("score: " + score)
     }
 
     calculateSplitScore(index) {
+        console.log("blackjack calculateSplitScore")
         const cards = this.player.split.cards[index];
         let score = 0;
         let aces = 0;
@@ -110,10 +116,12 @@ export default class Blackjack {
                 }
             }
         }
+        console.log("score: " + score)
         return score;
     }
 
     setPlayerScore() {
+        console.log("blackjack setPlayerScore")
         const cards = this.player.cards;
         let score = 0;
         let aces = 0;
@@ -138,9 +146,11 @@ export default class Blackjack {
             }
         }
         this.player.score = score;
+        console.log("score: " + score)
     }
 
     setDealerScore() {
+        console.log("blackjack setDealerScore")
         const cards = this.dealer.cards;
         let score = 0;
         let aces = 0;
@@ -165,6 +175,7 @@ export default class Blackjack {
             }
         }
         this.dealer.score = score;
+        console.log("score: " + score)
     }
 
 }
