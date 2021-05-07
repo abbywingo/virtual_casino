@@ -1,72 +1,49 @@
 // import axios from 'axios';
 import Blackjack from './blackjack.js';
 
-export async function renderBlackjack(game) {
-    console.log("renderBlackjack")
-    $('#header').replaceWith(
-        `<div class=menu>
-            <h1>426 Virtual Casino</h1>
-            <button id=go_blackjack>Blackjack</button>
-            <button id=go_authentication></button>
-        </div>`
-    );
+export async function renderBlackjack() {
+    const game = await newGame();
+    game.clearGame()
     const $page = $('#page');
-    const user = await getCurrentUser();
-    if (user) {
-        $('#go_authentication').text("My Account")
-    } else {
-        $('#go_authentication').text("Sign Up/Login")
-    }
-    $page.on("click", '#go_blackjack', (event) => renderBlackjack());
-    $page.on("click", '#go_authentication', (event) => renderAuthentication());
-    $('#root').empty()
-    loadBlackjackBase();
-    $page.on("click", "#submit_initial_bet_button", (event) => placeInitialBet(game));
+    $page.on("click", "#submit_initial_bet_button", (event) => placeInitialBet(event, game));
     $page.on("click", "#yes_insurance_button", (event) => handleYesNoPress(event, game));
     $page.on("click", "#no_insurance_button", (event) => handleYesNoPress(event, game));
-    $page.on("click", "#split_button", (event) => handleSplit(game));
+    $page.on("click", "#split_button", (event) => handleSplit(event, game));
     $page.on("click", "#hit_button", (event) => handleHit(game));
     $page.on("click", "#stand_button", (event) => handleStand(game));
-    $page.on("click", "#play_again_button", (event) => playAgain(game));
-    $page.on("click", "#double_down_button", (event) => handleDD(game));
+    $page.on("click", "#play_again_button", (event) => playAgain(event, game));
+    $page.on("click", "#double_down_button", (event) => handleDD(event, game));
+    $page.on("click", '#auth_button', (event) => loadAuth(event));
+    $page.on("click", '#signup_button', (event) => signUp(event));
+    $page.on("click", '#close_auth_button', (event) => closeAuth(event));
+    $page.on("click", '#submit_signup_button', (event) => handleSubmitSignup(event));
+    $page.on("click", '#login_button', (event) => loadLoginForm(event));
+    $page.on("click", '#submit_login_button', (event) => handleSubmitLogin(event));
+    $page.on("click", '#signout_button', (event) => signOut(event));
 }
 
-export function newGame() {
-    console.log("newGame")
+export async function newGame() {
     let game = new Blackjack();
     const $root = $('#root');
+
     //clear page if anything remains
     $('#game').remove();
     $root.empty();
 
-    renderBlackjack(game);
-}
-
-export async function loadBlackjackBase() {
-    console.log("loadBlackjackBase");
-
-    //get user's tokens
     const user = await getCurrentUser();
-    let points;
+    let auth;
     if (user) {
-        const uid = user.uid;
-        let points;
-        firebase.database().ref('/users/' + uid + '/points').get().then((snapshot) => {
-            if (snapshot.exists()) {
-                points = snapshot.val();
-            } 
-        }).catch((error) => {
-            errorMessage();
-            console.error(error);
-            return;
-        })
+        auth = "My Account/Sign Out"
+    } else {
+        auth = "Sign Up/Log In"
     }
 
-    const $root = $('#root');
-    $root.empty();
     //add blackjack header and button box and set place for game
     const header =
-        `<div class="game_header">
+        `<div class=auth>
+            <button id=auth_button>${auth}</button>
+        </div>
+        <div class="header">
             <h1>Blackjack</h1>
             <h2 id="tokens"></h2>
         </div>
@@ -82,20 +59,27 @@ export async function loadBlackjackBase() {
         </div>
         <div id="game"></div>`;
 
-    //append all to root
-    $root.replaceWith(header);
-    //if user is signed in, add their tokens
-    if (points !== undefined) {
-        $('#tokens').text("Your Tokens: " + points);
+    $root.append(header);
+
+    let points = 0;
+
+    if (user) {
+        const uid = user.uid;
+        firebase.database().ref('/users/' + uid + '').get().then((snapshot) => {
+            if (snapshot.exists()) {
+                points = snapshot.val().points;
+                $('#tokens').text("Your Tokens: " + (points));
+            }
+        })
     } else {
-        $('#tokens').text("Sign up or log in to see your tokens.")
+        $('#tokens').text("Sign up or log in to see your tokens");
     }
+
+    return game;
 }
 
-export function placeInitialBet(game) {
-    console.log("placeInitialBet");
-    console.log("game: ")
-    console.log(game)
+export function placeInitialBet(event, game) {
+    if (event) {event.preventDefault();}
     let bet;
     //pull value from input
     const initial_bet = parseInt($('#initial_bet_input').val());
@@ -112,7 +96,7 @@ export function placeInitialBet(game) {
 }
 
 export async function loadBlackjack(game, bet) {
-    console.log("loadBlackjack")
+    const $game = $('#game');
     //get a new deck, shuffle it and draw 4 cards
     let deck;
     try {
@@ -122,6 +106,7 @@ export async function loadBlackjack(game, bet) {
         });
     } catch (error) {
         $('.message').text("Something may have gone wrong. Try again.")
+        console.log(error)
         return;
     }
     //if request was failed, post error message and stop code
@@ -132,8 +117,36 @@ export async function loadBlackjack(game, bet) {
     //set deck id in class
     game.deck_id = deck.data['deck_id'];
     // deal out cards
-    game.player.cards = [deck.data['cards'][0], deck.data['cards'][2]];
-    game.dealer.cards = [deck.data['cards'][1], deck.data['cards'][3]];
+    game.player.cards.push(deck.data['cards'][0], deck.data['cards'][2]);
+    game.dealer.cards.push(deck.data['cards'][1], deck.data['cards'][3]);
+    // const cards =  [
+    //     {
+    //         "image": "https://deckofcardsapi.com/static/img/KH.png",
+    //         "value": "KING",
+    //         "suit": "HEARTS",
+    //         "code": "KH"
+    //     },
+    //     {
+    //         "image": "https://deckofcardsapi.com/static/img/8C.png",
+    //         "value": "8",
+    //         "suit": "CLUBS",
+    //         "code": "8C"
+    //     },
+    //     {
+    //         "image": "https://deckofcardsapi.com/static/img/KS.png",
+    //         "value": "KING",
+    //         "suit": "SPADES",
+    //         "code": "KS"
+    //     },
+    //     {
+    //         "image": "https://deckofcardsapi.com/static/img/AH.png",
+    //         "value": "ACE",
+    //         "suit": "HEARTS",
+    //         "code": "AH"
+    //     }
+    // ]
+    // game.player.cards.push(cards[0], cards[2]);
+    // game.dealer.cards.push(cards[1], cards[3]);
     //set initial bet & total bet
     game.player.bets.initial = bet;
     game.player.bets.total = bet;
@@ -157,7 +170,7 @@ export async function loadBlackjack(game, bet) {
                 <img src=${game.player.cards[1].image} alt="${game.player.cards[1].value}">
             </div>
         </div>`;
-    $('#game').append(player);
+    $game.append(player);
     //add dealer cards and bets
     const dealer =
         `<div class="dealer">
@@ -168,7 +181,7 @@ export async function loadBlackjack(game, bet) {
                 <img src=${game.dealer.cards[1].image} alt="${game.dealer.cards[1].value}">
             </div>
         </div>`
-    $('#game').append(dealer);
+    $game.append(dealer);
     //if dealer is showing ace, give option for insurance
     if (game.dealer.cards[1].value === "ACE") {
         //take insurance route
@@ -180,10 +193,10 @@ export async function loadBlackjack(game, bet) {
 }
 
 export function insuranceBet(game) {
-    console.log("insuranceBet")
     //update message
     $('.message').text("Dealer is showing an ace. Would you like to place an insurance bet? Maximum bet is half your initial bet.");
     //add insurance options
+    // console.log(game);
     const max = Math.ceil(game.player.bets.initial/2);
     const insurance =
         `<div class="insurance">
@@ -195,7 +208,7 @@ export function insuranceBet(game) {
 }
 
 export function handleYesNoPress(event, game) {
-    console.log("handleYesNoPress")
+    if (event) {event.preventDefault();}
     //grab id of button pressed
     const id = event.target.id;
     //if yes, save bet & update bets
@@ -221,7 +234,6 @@ export function handleYesNoPress(event, game) {
 }
 
 export function addPlayOptionButtons(card1, card2, bool) {
-    console.log("addPlayOptionButtons")
     if (!bool) {
         //add normal button options
         $('.message').text("Do you want to hit, stand or double down?");
@@ -240,11 +252,12 @@ export function addPlayOptionButtons(card1, card2, bool) {
     } else {
         //add normal button options
         $('.message').text("Dealer did not have Blackjack. Do you want to hit, stand or double down?");
-        $('.play_buttons').empty();
-        $('.play_buttons').append(
-            `<button id="hit_button">Hit</button>
-            <button id="stand_button">Stand</button>
-            <button id="double_down_button">Double Down</button>`
+        $('.play_buttons').replaceWith(
+            `<div class=play_buttons>
+                <button id=hit_button>Hit</button>
+                <button id=stand_button>Stand</button>
+                <button id=double_down_button>Double Down</button>
+            </div>`
         )
         //if cards are the same, add option to split
         if (card1.value === card2.value) {
@@ -254,7 +267,8 @@ export function addPlayOptionButtons(card1, card2, bool) {
     }
 }
 
-export async function handleSplit(game) {
+export async function handleSplit(event, game) {
+    if (event) {event.preventDefault();}
     console.log("handleSplit")
     //pull deck id to create url for API request
     const deck_id = game.deck_id;
@@ -439,11 +453,11 @@ export async function handleHit(game) {
             } else {
                 //change pointer to next hand in split cards
                 game.player.split.pointer++;
+                //add back dd button
                 //add pointer class to card at new pointer
                 const index = game.player.split.pointer;
                 const id_2 = "#hand_" + (index+1) + ""
                 $(id_2).attr("class", "pointer");
-                addPlayOptionButtons(game.player.split.cards[index][0], game.player.split.cards[index][1]);
             }
         } else if (game.player.split.double_down[index]) {
             handleStand(game);
@@ -455,7 +469,9 @@ export async function handleHit(game) {
 }
 
 export async function handleStand(game) {
-    console.log("handleStand")
+    console.log("handing stand");
+    console.log("game: ")
+    console.log(game)
     //if hand hasn't been split, dealer's turn
     if (!game.player.been_split) {
         dealerPlay(game);
@@ -482,7 +498,8 @@ export async function handleStand(game) {
     }
 }
 
-export function handleDD(game) {
+export function handleDD(event, game) {
+    if (event) {event.preventDefault();}
     console.log("handleDD")
     //if no split hands
     if (!game.player.been_split) {
@@ -501,7 +518,7 @@ export function handleDD(game) {
 }
 
 export async function dealerPlay(game) {
-    console.log("dealerPlay");
+    console.log("dealer playing")
     $('#face_down_card').replaceWith(`<img src=${game.dealer.cards[0].image} alt="${game.dealer.cards[0].value}"></img>`);
     $('#dealer_score').text("Score: " + game.dealer.score);
     if (game.dealer.score < 17) {
@@ -547,7 +564,7 @@ export async function dealerDraw(game) {
     }
 }
 
-export function gameOver(game) {
+export async function gameOver(game) {
     console.log("gameOver")
     let won = 0;
     let lost = 0;
@@ -559,6 +576,7 @@ export function gameOver(game) {
         } else {
             lost += game.player.bets.insurance;
         }
+        //handle busts
         if (game.dealer.score > 21 && game.player.score > 21) {
             message = "Both busted. Push."
         } else if (game.player.score > 21) {
@@ -567,15 +585,17 @@ export function gameOver(game) {
         } else if (game.dealer.score > 21) {
             message = "Dealer busted. You win! :)"
             won += game.player.bets.initial + game.player.bets.double_down;
+        //handle 21
         } else if (game.player.score === 21 && game.player.cards.length == 2 && game.dealer.score !== 21) {
             message = "You got Blackjack and dealer did not. You win! :)"
             won += game.player.bets.initial + Math.round(game.player.bets.initial/2);
         } else if ((game.player.score === 21 && game.dealer.score === 21 && game.player.cards.length === 2 && game.dealer.cards.length > 2)) {
             message = "You got Blackjack and dealer did not. You win! :)"
             won += game.player.bets.initial + Math.round(game.player.bets.initial/2);
-        } else if (game.dealer.score === 21 && game.dealer.cards.length === 2) {
+        } else if (game.dealer.score === 21 && game.dealer.cards.length === 2 && game.player.score !== 21) {
             message = "Dealer had Blackjack and you did not. Dealer wins :("
             lost += game.player.bets.initial + game.player.bets.double_down;
+        //handle higher score & push
         } else if (game.player.score > game.dealer.score) {
             message = "You had the higher score. You win! :)"
             won += game.player.bets.initial + game.player.bets.double_down;
@@ -610,7 +630,7 @@ export function gameOver(game) {
             } else if (score === 21 && game.player.split.cards[i].length === 2 && game.dealer.score !== 21) {
                 message += "You got Blackjack and dealer did not. You win! :) "
                 won += game.player.bets.initial + Math.round(game.player.bets.initial/2);
-            } else if (score === 21 && game.dealer.score === 21 && game.player.split.cards[i].length === 2 && game.dealer.cards.length > 2) {
+            } else if (score === 21 && game.dealer.score === 21 && game.player.split.cards[i].length === 2 && game.dealer.cards.length > 2 && score !== 21) {
                 message += "You got Blackjack and dealer did not. You win! :) "
                 won += game.player.bets.initial + Math.round(game.player.bets.initial/2);
             } else if (score > game.dealer.score) {
@@ -637,12 +657,12 @@ export function gameOver(game) {
     $('.play_buttons').empty();
     $('.play_buttons').append(`<button id="play_again_button">Play Again</button>`);
     $('.message').text(message);
-    updatePoints1(won, lost)
+    await updatePoints1(won, lost)
     $('#bet_message').text("Won: " + won + " Lost: " + lost);
 }
 
-export function playAgain(game) {
-    console.log("playAgain")
+export function playAgain(event, game) {
+    if (event) {event.preventDefault();}
     game.clearGame();
     newGame();
 }
@@ -662,34 +682,90 @@ export function getCurrentUser() {
     })
 }
 
-export function loadSignUpForm() {
-    // create sign up form
-    $('.signup_login').replaceWith(
-        `<div class=signup>
-            <form id=signup_form">
-                <h2>Sign Up</h2>
-                <input type="user_id" id="signup_name" placeholder="Name" minlength=1 required>
-                <input type="email" id="signup_email" placeholder="Email Address" minlength=3 required>
-                <input 
-                    type="password" 
-                    id="signup_password" 
-                    pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9]).{8,}"
-                    placeholder="Password"
-                    minlength=8
-                    title="Must contain at least one number and one uppercase and lowercase letter, and at least 8 or more characters" 
-                required>
-                <button type="submit" id="submit_signup_button">Submit</button>
-            </form>
-        </div>
-        <div class=password_message>
-            <h3>Password must contain the following:</h3>
-            <p id=lowercase class=invalid>A lowercase letter</p>
-            <p id=capital class=invalid>A capital (uppercase) letter</p>
-            <p id=number class=invalid>A number</p>
-            <p id=length class=invalid>Minimum of 8 characters</p>
-        </div>`
+export async function updatePoints1(won, lost) {
+    const current = await getCurrentUser();
+    if (current) {
+        const uid = current.uid;
+        let points = 0;
+        let games_played = 0;
+        firebase.database().ref('/users/' + uid + '').get().then((snapshot) => {
+           if (snapshot.exists()) {
+                console.log("points before updating:" + snapshot.val().points)
+                points = snapshot.val().points + won - lost;
+                games_played = snapshot.val().games_played + 1;
+                console.log("points after updating: " + points);
+                console.log("games_played: " + games_played);
+                firebase.database().ref('/users/' + uid).update({'points': points, 'games_played': games_played});
+                $('#tokens').text("Your Tokens: " + (points));
+           }
+        })
+    }
+}
+
+export async function loadAuth(event) {
+    if (event) {event.preventDefault();}
+    $('#auth_button').replaceWith(`<button id="close_auth_button">Close Account Information</button>`);
+    const user = await getCurrentUser();
+    if (user) {
+        $('.auth').append(
+            `<div class="signup_login">
+                <h5 class="auth_message">Currently logged in as: ${user.displayName}</h5>
+                <button id="signout_button">Sign Out</button>
+            </div>`
+        )
+    } else {
+        $('.auth').append(
+            `<div class="signup_login">
+                <h5 class="auth_message">Create an account or log in!</h5>
+                <button id="signup_button">Sign Up</button>
+                <button id="login_button">Log In</button>
+            </div>`
+        )
+    }
+}
+
+export async function closeAuth(event) {
+    if (event) {event.preventDefault();}
+    const user = await getCurrentUser();
+    let auth;
+    if (user) {
+        auth = "My Account/Sign Out"
+    } else {
+        auth = "Sign Up/Log In"
+    }
+    $('.auth').empty();
+    $('.auth').append(`<button id=auth_button>${auth}</button>`);
+}
+
+export function signUp(event) {
+    if (event) {event.preventDefault();}
+   // create sign up form
+   $('.signup_login').replaceWith(
+    `<div class="signup">
+        <form id="signup_form">
+            <h2>Sign Up</h2>
+            <input type="user_id" id="signup_name" placeholder="Name" minlength=1 required>
+            <input type="email" id="signup_email" placeholder="Email Address" minlength=3 required>
+            <input 
+                type="password" 
+                id="signup_password" 
+                pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9]).{8,}"
+                placeholder="Password"
+                minlength=8
+                title="Must contain at least one number and one uppercase and lowercase letter, and at least 8 or more characters" 
+            required>
+            <button id="submit_signup_button">Submit</button>
+        </form>
+    </div>
+    <div class=password_message>
+        <h3>Password must contain the following:</h3>
+        <p id=lowercase class=invalid>A lowercase letter</p>
+        <p id=capital class=invalid>A capital (uppercase) letter</p>
+        <p id=number class=invalid>A number</p>
+        <p id=length class=invalid>Minimum of 8 characters</p>
+    </div>`
     )
-    
+
     const pwd_element = $('#signup_password')
 
     // when user clicks on password field, message shows up
@@ -740,11 +816,10 @@ export function loadSignUpForm() {
             $('#length').addClass("invalid");
         }
     })
-
 }
 
 export function handleSubmitSignup(event) {
-    event.preventDefault();
+    if (event) {event.preventDefault();}
 
     // pull email and password from form
     const email = $('#signup_email').val();
@@ -789,9 +864,7 @@ export async function setupUser(name, email) {
     current.updateProfile({
         displayName: name,
         photoURL: 'https://cdn.business2community.com/wp-content/uploads/2017/08/blank-profile-picture-973460_640.png'
-    }).then(function() {
-    }).catch(function(error) {
-    }) 
+    })
     const database = firebase.database();
     const users_ref = database.ref('/users');
     const uid = current.uid;
@@ -803,31 +876,13 @@ export async function setupUser(name, email) {
     })
 }
 
-export async function updatePoints1(won, lost) {
-    const current = await getCurrentUser();
-    if (current) {
-        const uid = current.uid;
-        let points = 0;
-        let games_played = 0;
-        firebase.database().ref('/users/' + uid + '').get().then((snapshot) => {
-           if (snapshot.exists()) {
-               console.log(snapshot.val())
-            points = snapshot.val().points + won - lost;
-            games_played = snapshot.val().games_played + 1;
-            console.log("points: " + points);
-            console.log("games_played: " + games_played);
-            firebase.database().ref('/users/' + uid).update({'points': points, 'games_played': games_played});
-            $('#tokens').text("Your Tokens: " + (points));
-           }
-        })
-    }
-}
-
-export function loadLoginForm() {
+export function loadLoginForm(event) {
+    console.log("loadLoginForm");
+    if (event) {event.preventDefault();}
     // create login form
     $('.signup_login').replaceWith(
         `<div class=login>
-            <form id=login_form">
+            <form id="login_form">
                 <h2>Login</h2>
                 <input type="email" id="login_email" placeholder="Email Address" minlength=3 required>
                 <input 
@@ -844,8 +899,8 @@ export function loadLoginForm() {
     )
 }
 
-export function handleSubmitLogin(event) {
-    event.preventDefault();
+export async function handleSubmitLogin(event) {
+    if (event) {event.preventDefault();}
 
     const email = $('#login_email').val();
     const password = $('#login_password').val();
@@ -854,13 +909,21 @@ export function handleSubmitLogin(event) {
         .then((userCredential) => {
             // Signed in
             var user = userCredential.user;
+            const uid = user.uid;
+            firebase.database().ref('/users/' + uid + '').get().then((snapshot) => {
+                if (snapshot.exists()) {
+                    const points = snapshot.val().points;
+                    $('#tokens').text("Your Tokens: " + (points));
+                }
+            })
             $('.login').replaceWith(
                 `<div class=login_complete>
                     <h2 class=login_complete_message></h2>
                 </div>`
             )
-            $('#go_authentication').text("My Account");
+            $('#auth_button').text("My Account");
             $('.login_complete_message').text("Login Successful. Welcome to the 426 Casino!");
+            $('#tokens').text("Your Tokens: " + points);
         })
         .catch((error) => {
             const errorCode = error.code;
@@ -877,86 +940,28 @@ export function handleSubmitLogin(event) {
                 errorMessage = "Something went wrong. Try again."
             }
             $('.login').append(`<h2>${errorMessage}</h2>`)
-         });
-    
+        });
+
 }
 
-export function signOut() {
+export function signOut(event) {
+    event.preventDefault();
     firebase.auth().signOut().then(() => {
         $('.signup_login').replaceWith(
-            `<div class=signup_login>
-                <h1 id="display_name">Create an account or login!</h2>
-                <button id=signup_button>Sign Up</button>
-                <button id=login_button>Login</button>
+            `<div class="signup_login">
+                <h5 id="display_name">Create an account or login!</h5>
+                <button id="signup_button">Sign Up</button>
+                <button id="login_button">Login</button>
             </div>`
         )
-        $('#go_authentication').text("Sign Up/Login")
+        $('#auth_button').text("Sign Up/Login")
         console.log("signed out")
     }).catch((error) => {
         $('#display_name').text("Sign out unsuccessful. Try again.");
     })
 }
 
-export async function renderAuthentication() {
-    console.log("renderAuthentication")
-    const $root = $('#root');
-    const $page = $('#page');
-    $root.empty();
-    const user = await getCurrentUser();
-    if (user) {
-        $root.append(
-            `<div class=signup_login>
-                <h1 id="display_name"><h1>
-                <button id=signout_button>Sign Out</button>
-            </div>`
-        )
-    } else {
-        $root.append(
-            `<div class=signup_login>
-                <h1 id="display_name">Create an account or login!</h2>
-                <button id=signup_button>Sign Up</button>
-                <button id=login_button>Login</button>
-            </div>`
-        )
-    }
-    $root.on("click", "#signup_button", (event) => loadSignUpForm(event));
-    $root.on("click", "#submit_signup_button", (event) => handleSubmitSignup(event));
-    $root.on("click", "#login_button", (event) => loadLoginForm(event));
-    $root.on("click", "#submit_login_button", (event) => handleSubmitLogin(event));
-    $root.on("click", "#signout_button", (event) => signOut());
-    // $page.on("click", '#go_blackjack', (event) => renderBlackjack());
-    // $page.on("click", '#go_authentication', (event) => renderAuthentication());
-    // $page.on("click", '#go_home', (event) => renderHome());
-}
-
-export async function renderHome() {
-    console.log("renderHome")
-    $('#root').empty()
-    $('#header').replaceWith(
-        `<div class=menu>
-            <h1>426 Virtual Casino</h1>
-            <button class=active id=go_home>Home</button>
-            <button id=go_blackjack>Blackjack</button>
-            <button id=go_authentication></button>
-        </div>`
-    );
-    const $page = $('#page');
-    const user = await getCurrentUser();
-    if (user) {
-        $('#go_authentication').text("My Account")
-    } else {
-        $('#go_authentication').text("Sign Up/Login")
-    }
-
-    $page.on("click", '#go_blackjack', (event) => renderBlackjack());
-    $page.on("click", '#go_authentication', (event) => renderAuthentication());
-    $page.on("click", '#go_home', (event) => renderHome());
-}
-
-export async function render() {
-    newGame();
-}
 
 $(function() {
-    render();
-})
+    renderBlackjack();
+}) 

@@ -6,3 +6,45 @@ img {
 .pointer {
     background-color: grey;
 }
+
+.password_message {
+    display: none;
+    position: relative;
+    padding: 20px;
+    margin-top: 10px;
+}
+
+.password_message p {
+    padding: 10px 35px;
+    font-size: 18px;
+}
+
+.login_form input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+    margin-top: 6px;
+    margin-bottom: 16px;
+}
+
+.valid {
+    color: green;
+}
+
+.valid::before {
+    position: relative;
+    left: -35px;
+    content: "\2714";
+}
+
+.invalid {
+    color: red;
+}
+
+.invalid::before {
+    position: relative;
+    left: -35px;
+    content: "\2716";
+}

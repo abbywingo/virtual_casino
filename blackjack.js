@@ -58,6 +58,8 @@ export default class Blackjack {
         
         this.over = false;
         this.deck_id = 0;
+
+        return this;
     }
 
     setSplitScore(index) {
