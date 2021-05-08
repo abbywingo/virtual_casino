@@ -68,7 +68,7 @@ img {
       height: 100%;
       width: 100%;
       grid-template-columns: repeat(7, 1fr);
-      grid-template-rows: 75px 75px 75px 75px repeat(3, 1fr) 75px 100px 100px 100px;
+      grid-template-rows: 1fr 75px 75px 75px repeat(3, 1fr) 75px 100px 100px 100px;
       /* background-color: #F6E3D4; */
   }
 
