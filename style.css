@@ -4,11 +4,11 @@ img {
     padding-top: 7.25px;
 }
 
-.split.pointer{
+.split{
     opacity: 100%;
 }
 
-.split {
+.split.played {
     opacity: 50%;
 }
 
@@ -111,6 +111,7 @@ img {
       /* margin: auto; */
       text-align: center;
       /* border: solid; */
+      font-size: 14px;
   }
 
   .play_buttons {
@@ -121,6 +122,26 @@ img {
       /* border: solid; */
   }
 
+  .play_buttons button {
+    background-color: #69a0a7; 
+    border: 1px solid white;
+    color: white;
+    padding: 12px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 12px;
+    border-radius: 2px;
+    transition-duration: 0.2s;
+  }
+
+  .play_buttons button:hover {
+    background-color: white;
+    color: #69a0a7;
+    border: 1px solid #69a0a7;
+    cursor: pointer;
+  }
+
   .player_info {
       grid-row: 1 / 2;
       grid-column: 1 / 2;
@@ -128,6 +149,7 @@ img {
       /* margin: auto; */
       text-align: center;
       /* border: solid; */
+      font-size: 12px;
   }
 
   .player_bets {
@@ -145,7 +167,7 @@ img {
   }
 
   button {
-    background-color: #69a0a7; /* Green */
+    background-color: #69a0a7; 
     border: 3px solid white;
     color: white;
     padding: 16px;
@@ -180,6 +202,7 @@ img {
       /* background-color: gold; */
       /* margin: auto; */
       text-align: center;
+      font-size: 12px;
   }
 
   #dealer_cards {
@@ -268,9 +291,18 @@ img {
     background-color: #bc8460;
     color: white;
     margin: 20px auto; 
-    padding: 20px;
-    border: 1px solid #888;
-    width: 80%; 
+    padding: 10px;
+    width: 60%; 
+    max-height: 100%;
+  }
+
+  .drink_info h2 {
+      text-align: center;
+  }
+
+  .drink_info img {
+      display: block;
+      margin: auto;
   }
   
   
@@ -360,4 +392,13 @@ img {
     color: black;
     text-decoration: none;
     cursor: pointer;
+  }
+
+  .blackjack_instructions h4 {
+      text-decoration: underline;
+      font-size: 20px;
+  }
+
+  .blackjack_instructions h6 {
+    font-size: 16px;
   }

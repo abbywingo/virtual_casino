@@ -204,8 +204,9 @@ export async function loadBlackjack(game, bet) {
     if (game.dealer.cards[1].value === "ACE") {
         //take insurance route
         insuranceBet(game);
-    } else {
-        //take normal route
+    } else if (game.player.score === 21) {
+        dealerPlay(game);
+    } else {//take normal route
         addPlayOptionButtons(game.player.cards[0], game.player.cards[1], false);
     }
 }
@@ -307,6 +308,7 @@ export async function handleSplit(event, game) {
         errorMessage();
         return;
     }
+    $('#player_score').remove();
     //if hand hasn't been split yet
     if (!game.player.been_split) {
         //create card array for each new hand
@@ -411,6 +413,7 @@ export async function handleHit(game) {
     }
     //remove double down button, no longer an option for this hand
     $('#double_down_button').remove();
+    $('#split_button').remove();
     //if hand hasn't been split
     if (!game.player.been_split) {
         if (game.player.double_down) {
@@ -584,26 +587,27 @@ export async function gameOver(game) {
         } else {
             lost += game.player.bets.insurance;
         }
-        //handle busts
-        if (game.dealer.score > 21 && game.player.score > 21) {
-            message = "Both busted. Push."
+
+        //handle 21
+        if (game.player.score === 21 && game.player.cards.length == 2 && game.dealer.score !== 21) {
+            message = "You got Blackjack and dealer did not. You win! :)"
+            won += game.player.bets.initial + Math.round(game.player.bets.initial / 2);
+        } else if ((game.player.score === 21 && game.dealer.score === 21 && game.player.cards.length === 2 && game.dealer.cards.length > 2)) {
+            message = "You got Blackjack and dealer did not. You win! :)"
+            won += game.player.bets.initial + Math.round(game.player.bets.initial / 2);
+        } else if (game.dealer.score === 21 && game.dealer.cards.length === 2 && game.player.score !== 21) {
+            message = "Dealer had Blackjack and you did not. Dealer wins :("
+            lost += game.player.bets.initial + game.player.bets.double_down;
+            //handle busts
+        } else if (game.dealer.score > 21 && game.player.score > 21) {
+            message = "Both busted. Push. "
         } else if (game.player.score > 21) {
             message = "You busted. Dealer wins :("
             lost += game.player.bets.initial + game.player.bets.double_down;
         } else if (game.dealer.score > 21) {
             message = "Dealer busted. You win! :)"
             won += game.player.bets.initial + game.player.bets.double_down;
-        //handle 21
-        } else if (game.player.score === 21 && game.player.cards.length == 2 && game.dealer.score !== 21) {
-            message = "You got Blackjack and dealer did not. You win! :)"
-            won += game.player.bets.initial + Math.round(game.player.bets.initial/2);
-        } else if ((game.player.score === 21 && game.dealer.score === 21 && game.player.cards.length === 2 && game.dealer.cards.length > 2)) {
-            message = "You got Blackjack and dealer did not. You win! :)"
-            won += game.player.bets.initial + Math.round(game.player.bets.initial/2);
-        } else if (game.dealer.score === 21 && game.dealer.cards.length === 2 && game.player.score !== 21) {
-            message = "Dealer had Blackjack and you did not. Dealer wins :("
-            lost += game.player.bets.initial + game.player.bets.double_down;
-        //handle higher score & push
+            //handle higher score & push
         } else if (game.player.score > game.dealer.score) {
             message = "You had the higher score. You win! :)"
             won += game.player.bets.initial + game.player.bets.double_down;
@@ -885,7 +889,7 @@ export async function setupUser(name, email) {
     const uid = current.uid;
     const user_ref = firebase.database().ref('/users/' + uid);
     user_ref.set({
-        'points': 100,
+        'points': 300,
         'email': email,
         'games_played': 0
     })
