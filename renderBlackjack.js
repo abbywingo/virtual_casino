@@ -54,6 +54,9 @@ export async function newGame() {
             <div class=signup_login>
             </div>
         </div>
+        <div class="title">
+            <h1>The Bahama's Bellagio</h1<>
+        </div>
         <div class="header">
             <h1>Blackjack</h1>
             <h2 id="tokens"></h2>
@@ -473,6 +476,7 @@ export async function handleHit(game) {
             } else {
                 //change pointer to next hand in split cards
                 game.player.split.pointer++;
+                addPlayOptionButtons(game.player.split.cards[game.player.split.pointer][0], game.player.split.cards[game.player.split.pointer][1])
             }
         } else if (game.player.split.double_down[index]) {
             handleStand(game);
@@ -505,7 +509,7 @@ export async function handleStand(game) {
         //increment pointer
         game.player.split.pointer++;
         //load play option buttons with new pointer
-        addPlayOptionButtons(game.player.split.cards[index][0], game.player.split.cards[index][1]);
+        addPlayOptionButtons(game.player.split.cards[game.player.split.pointer][0], game.player.split.cards[game.player.split.pointer][1]);
     }
 }
 
@@ -1119,8 +1123,9 @@ export function openingMessage() {
         `<div class=modal_4>
             <div class=opening_message>
                 <span class="close_opening">&times;</span>
-                <h1>Welcome</h1>
-                <h3>write something ab beaches & drinks & gambling here</h3>
+                <h1>Welcome!</h1>
+                <h3>Whether you're a broke college student with no money for travel, needing to relax from a stressful life, or too lazy to leave your house to go anywhere, the Bahama's Bellagio is the perfect place for you. Through combining two of the 
+                best vacation spots, we have created the perfect virtual casino, where you can't lose money but you can drink! Choose a drink to make at home in the top right corner, partake in a few hands of Blackjack, and enjoy! </h3>
             </div>
         </div>`
     )
