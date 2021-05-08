@@ -1125,7 +1125,7 @@ export function openingMessage() {
                 <span class="close_opening">&times;</span>
                 <h1>Welcome!</h1>
                 <h3>Whether you're a broke college student with no money for travel, needing to relax from a stressful life, or too lazy to leave your house to go anywhere, the Bahama's Bellagio is the perfect place for you. Through combining two of the 
-                best vacation spots, we have created the perfect virtual casino, where you can't lose money but you can drink! Choose a drink to make at home in the top right corner, partake in a few hands of Blackjack, and enjoy! </h3>
+                best vacation spots, we have created the perfect virtual casino, where you can't lose money but you can drink! Choose a drink to make at home in the top left corner, partake in a few hands of Blackjack, and enjoy! </h3>
             </div>
         </div>`
     )
