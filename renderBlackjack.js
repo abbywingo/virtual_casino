@@ -1,4 +1,3 @@
-// import axios from 'axios';
 import Blackjack from './blackjack.js';
 
 export async function renderBlackjack() {
@@ -15,11 +14,17 @@ export async function renderBlackjack() {
     $page.on("click", "#double_down_button", (event) => handleDD(event, game));
     $page.on("click", '#auth_button', (event) => loadAuth(event));
     $page.on("click", '#signup_button', (event) => signUp(event));
-    $page.on("click", '#close_auth_button', (event) => closeAuth(event));
+    $page.on("click", '.close', (event) => closeAuth(event));
     $page.on("click", '#submit_signup_button', (event) => handleSubmitSignup(event));
     $page.on("click", '#login_button', (event) => loadLoginForm(event));
     $page.on("click", '#submit_login_button', (event) => handleSubmitLogin(event));
     $page.on("click", '#signout_button', (event) => signOut(event));
+    $page.on("click", '.drink_buttons', (event) => getDrink(event));
+    $page.on("click", ".close_drink", (event) => closeDrink(event));
+    $page.on("click", "#how_to_button", (event) => howToWindow(event));
+    $page.on("click", ".close_how_to", (event) => closeHowTo(event));
+    $page.on("click", ".close_opening", (event) => closeOpeningMessage(event));
+
 }
 
 export async function newGame() {
@@ -29,6 +34,8 @@ export async function newGame() {
     //clear page if anything remains
     $('#game').remove();
     $root.empty();
+    addDrinkButtons();
+    addHowToButton();
 
     const user = await getCurrentUser();
     let auth;
@@ -43,13 +50,22 @@ export async function newGame() {
         `<div class=auth>
             <button id=auth_button>${auth}</button>
         </div>
+        <div class=modal>
+            <div class=signup_login>
+            </div>
+        </div>
         <div class="header">
             <h1>Blackjack</h1>
             <h2 id="tokens"></h2>
         </div>
-        <div class="message_box">
-            <h2 class="message">Place your bet. Minimum is 5. Maximum is 50.</h2>
-            <h2 id="bet_message"></h2>
+        <div class="player">
+            <div class="player_info">
+                <h2 id="player_name">Player</h2>
+            </div>
+            <div class="message_box">
+                <h2 class="message">Place your bet. Minimum is 5. Maximum is 50.</h2>
+                <h2 id="bet_message"></h2>
+            </div>
             <div class="play_buttons">
                 <div class="input_bet">
                     <input type="number" id="initial_bet_input" min="5" max="50" value="5">
@@ -57,7 +73,15 @@ export async function newGame() {
                 </div>
             </div>
         </div>
-        <div id="game"></div>`;
+        <div class="dealer">
+            <div class="dealer_info">
+                <h2>Dealer</h2>
+                <h2 id="dealer_score"></h2>
+            </div>
+        </div>
+        <div class="deck">
+            <img src="card.PNG" alt="face down card">
+        </div>`;
 
     $root.append(header);
 
@@ -96,7 +120,6 @@ export function placeInitialBet(event, game) {
 }
 
 export async function loadBlackjack(game, bet) {
-    const $game = $('#game');
     //get a new deck, shuffle it and draw 4 cards
     let deck;
     try {
@@ -154,34 +177,29 @@ export async function loadBlackjack(game, bet) {
     game.setPlayerScore();
     game.setDealerScore();
     //add player cards and bets
+    $('.player_info').append(`<h2 id="player_score">Score: ${game.player.score}</h2>`);
+    const bets = 
+        `<div class="player_bets">
+            <h4 id="total_bet">Total Bet: ${bet}</h4>
+            <h5 id="initial_bet">Initial Bet: ${bet}</h5>
+            <h5 id="insurance_bet"></h5>
+            <h5 id="double_down_bet"></h5>
+            <h5 id="split_bet"></h5>
+        </div>`
     const player =
-        `<div class="player">
-            <h2 id="player_name">Player</h2>
-            <div class="player_bets">
-                <h4 id="total_bet">Total Bet: ${bet}</h4>
-                <h5 id="initial_bet">Initial Bet: ${bet}</h5>
-                <h5 id="insurance_bet"></h5>
-                <h5 id="double_down_bet"></h5>
-                <h5 id="split_bet"></h5>
-            </div>
-            <div class="cards" id="player_cards">
-                <h2 id="player_score">Score: ${game.player.score}</h2>
-                <img src=${game.player.cards[0].image} alt="${game.player.cards[0].value}">
-                <img src=${game.player.cards[1].image} alt="${game.player.cards[1].value}">
-            </div>
+        `<div class="cards" id="player_cards">
+            <img src=${game.player.cards[0].image} alt="${game.player.cards[0].value}">
+            <img src=${game.player.cards[1].image} alt="${game.player.cards[1].value}">
         </div>`;
-    $game.append(player);
+    $('#root').append(bets);
+    $('.player').append(player);
     //add dealer cards and bets
     const dealer =
-        `<div class="dealer">
-            <h2>Dealer</h2>
-            <div class="cards" id="dealer_cards">
-                <h2 id="dealer_score"></h2>
-                <img id="face_down_card" src="card.jpg" alt="face down card">
-                <img src=${game.dealer.cards[1].image} alt="${game.dealer.cards[1].value}">
-            </div>
+        `<div class="cards" id="dealer_cards">
+            <img id="face_down_card" src="card.PNG" alt="face down card">
+            <img src=${game.dealer.cards[1].image} alt="${game.dealer.cards[1].value}">
         </div>`
-    $game.append(dealer);
+    $('.dealer').append(dealer);
     //if dealer is showing ace, give option for insurance
     if (game.dealer.cards[1].value === "ACE") {
         //take insurance route
@@ -341,7 +359,7 @@ export function loadSplitCards(game) {
     for (let i = 0; i < split.length; i++) {
         //if hand has already been played, load the cards for it
         if (i < game.player.split.pointer) {
-            let card = `<div id="hand_${i+1}>`
+            let card = `<div class="split" id="hand_${i+1}>`
             for (let j = 0; j < split[i].length; j++) {
                 card += `<img src=${split[i][j].image} alt="${split[i][j].value}">`
             }
@@ -350,7 +368,7 @@ export function loadSplitCards(game) {
         } else {
             //if hand hasn't been played, load the cards for it
             const card = 
-            `<div id="hand_${i+1}">
+            `<div class="split" id="hand_${i+1}">
                 <h2>Hand ${i+1}</h2>
                 <h2 id="score_${i+1}">Score: ${game.player.split.scores[i]}</h2>
                 <img src=${split[i][0].image} alt="${split[i][0].value}">
@@ -365,7 +383,6 @@ export function loadSplitCards(game) {
     const pointer = game.player.split.pointer;
     //set hand pointer is at to class=active
     const id = "#hand_" + (pointer+1) + ""
-    $(id).attr("class", "pointer");
     //add play option buttons
     addPlayOptionButtons(game.player.split.cards[pointer][0], game.player.split.cards[pointer][1]);
 }
@@ -445,7 +462,7 @@ export async function handleHit(game) {
         if (game.player.split.scores[index] >= 21 && !game.player.split.double_down[index]) {
             //remove pointer class from current card at pointer
             const id_1 = "#hand_" + (game.player.split.pointer+1) + "";
-            $(id_1).removeAttr("class", "pointer");
+            $(id_1).attr("class", "played");
             //if last hand in split cards
             if (game.player.split.cards.length === index+1) {
                 //end of player's turn
@@ -453,11 +470,6 @@ export async function handleHit(game) {
             } else {
                 //change pointer to next hand in split cards
                 game.player.split.pointer++;
-                //add back dd button
-                //add pointer class to card at new pointer
-                const index = game.player.split.pointer;
-                const id_2 = "#hand_" + (index+1) + ""
-                $(id_2).attr("class", "pointer");
             }
         } else if (game.player.split.double_down[index]) {
             handleStand(game);
@@ -479,20 +491,16 @@ export async function handleStand(game) {
     } else if (game.player.split.cards.length === game.player.split.pointer + 1) {
         //remove pointer class from current card at pointer
         const id_1 = "#hand_" + (game.player.split.pointer+1) + "";
-        $(id_1).removeAttr("class", "pointer");
+        $(id_1).attr("class", "played");
         //end of player's turn
         dealerPlay(game)
     //change pointer to next hand in split cards
     } else {
         //remove pointer class from current card at pointer
         const id_1 = "#hand_" + (game.player.split.pointer+1) + "";
-        $(id_1).removeAttr("class", "pointer");
+        $(id_1).attr("class", "played");
         //increment pointer
         game.player.split.pointer++;
-        //add pointer class to card at new pointer
-        const index = game.player.split.pointer;
-        const id_2 = "#hand_" + (index+1) + ""
-        $(id_2).attr("class", "pointer");
         //load play option buttons with new pointer
         addPlayOptionButtons(game.player.split.cards[index][0], game.player.split.cards[index][1]);
     }
@@ -572,7 +580,7 @@ export async function gameOver(game) {
     if (!game.player.been_split) {
         //if dealer had Blackjack
         if (game.dealer.score === 21 && game.dealer.cards[1].value === "ACE" && game.dealer.cards.length === 2) {
-            won += game.player.bets.insurance;
+            won += game.player.bets.insurance + game.player.bets.insurance;
         } else {
             lost += game.player.bets.insurance;
         }
@@ -704,18 +712,21 @@ export async function updatePoints1(won, lost) {
 
 export async function loadAuth(event) {
     if (event) {event.preventDefault();}
-    $('#auth_button').replaceWith(`<button id="close_auth_button">Close Account Information</button>`);
+    $('.modal').css("display", "block");
+    // $('#auth_button').replaceWith(`<button id="close_auth_button">Close Account Information</button>`);
     const user = await getCurrentUser();
     if (user) {
-        $('.auth').append(
+        $('.signup_login').replaceWith(
             `<div class="signup_login">
+                <span class="close">&times;</span>
                 <h5 class="auth_message">Currently logged in as: ${user.displayName}</h5>
                 <button id="signout_button">Sign Out</button>
             </div>`
         )
     } else {
-        $('.auth').append(
+        $('.signup_login').replaceWith(
             `<div class="signup_login">
+                <span class="close">&times;</span>
                 <h5 class="auth_message">Create an account or log in!</h5>
                 <button id="signup_button">Sign Up</button>
                 <button id="login_button">Log In</button>
@@ -725,7 +736,9 @@ export async function loadAuth(event) {
 }
 
 export async function closeAuth(event) {
+    console.log("handling closeAuth")
     if (event) {event.preventDefault();}
+    $('.modal').css("display", "none");
     const user = await getCurrentUser();
     let auth;
     if (user) {
@@ -741,7 +754,8 @@ export function signUp(event) {
     if (event) {event.preventDefault();}
    // create sign up form
    $('.signup_login').replaceWith(
-    `<div class="signup">
+    `<div class="signup_login">
+        <span class="close">&times;</span>
         <form id="signup_form">
             <h2>Sign Up</h2>
             <input type="user_id" id="signup_name" placeholder="Name" minlength=1 required>
@@ -756,13 +770,13 @@ export function signUp(event) {
             required>
             <button id="submit_signup_button">Submit</button>
         </form>
-    </div>
-    <div class=password_message>
-        <h3>Password must contain the following:</h3>
-        <p id=lowercase class=invalid>A lowercase letter</p>
-        <p id=capital class=invalid>A capital (uppercase) letter</p>
-        <p id=number class=invalid>A number</p>
-        <p id=length class=invalid>Minimum of 8 characters</p>
+        <div class=password_message>
+            <h3>Password must contain the following:</h3>
+            <p id=lowercase class=invalid>A lowercase letter</p>
+            <p id=capital class=invalid>A capital (uppercase) letter</p>
+            <p id=number class=invalid>A number</p>
+            <p id=length class=invalid>Minimum of 8 characters</p>
+        </div>
     </div>`
     )
 
@@ -832,8 +846,9 @@ export function handleSubmitSignup(event) {
             // Signed in
             setupUser(name, email);
 
-            $('.signup').replaceWith(
-                `<div class=signup_complete>
+            $('.signup_login').replaceWith(
+                `<div class=signup_login>
+                    <span class="close">&times;</span>
                     <h2 class=signup_complete_message></h2>
                 </div>`
             )
@@ -853,9 +868,9 @@ export function handleSubmitSignup(event) {
             } else if (errorCode === 'weak-password') {
                 errorMessage = "Password is not strong enough. Try adding symbols or numbers."
             } else {
-                errorMessage = "Something went wrong. Try again."
+                errorMessage = "";
             }
-            $('.signup').append(`<h2>${errorMessage}</h2>`)
+            $('.signup_login').append(`<h2>${errorMessage}</h2>`)
         });
 }
 
@@ -870,7 +885,7 @@ export async function setupUser(name, email) {
     const uid = current.uid;
     const user_ref = firebase.database().ref('/users/' + uid);
     user_ref.set({
-        'points': 300,
+        'points': 100,
         'email': email,
         'games_played': 0
     })
@@ -881,7 +896,8 @@ export function loadLoginForm(event) {
     if (event) {event.preventDefault();}
     // create login form
     $('.signup_login').replaceWith(
-        `<div class=login>
+        `<div class=signup_login>
+            <span class="close">&times;</span>
             <form id="login_form">
                 <h2>Login</h2>
                 <input type="email" id="login_email" placeholder="Email Address" minlength=3 required>
@@ -916,8 +932,9 @@ export async function handleSubmitLogin(event) {
                     $('#tokens').text("Your Tokens: " + (points));
                 }
             })
-            $('.login').replaceWith(
-                `<div class=login_complete>
+            $('.signup_login').replaceWith(
+                `<div class=signup_login>
+                    <span class="close">&times;</span>
                     <h2 class=login_complete_message></h2>
                 </div>`
             )
@@ -937,9 +954,9 @@ export async function handleSubmitLogin(event) {
             } else if (errorCode === 'wrong-password') {
                 errorMessage = "Password is incorrect."
             } else {
-                errorMessage = "Something went wrong. Try again."
+                errorMessage = ""
             }
-            $('.login').append(`<h2>${errorMessage}</h2>`)
+            $('.signup_login').append(`<h2>${errorMessage}</h2>`)
         });
 
 }
@@ -949,6 +966,7 @@ export function signOut(event) {
     firebase.auth().signOut().then(() => {
         $('.signup_login').replaceWith(
             `<div class="signup_login">
+                <span class="close">&times;</span>
                 <h5 id="display_name">Create an account or login!</h5>
                 <button id="signup_button">Sign Up</button>
                 <button id="login_button">Login</button>
@@ -961,7 +979,154 @@ export function signOut(event) {
     })
 }
 
+export function addDrinkButtons() {
+    $('#root').append(
+        `<div class="drink_buttons">
+            <button class=drink id=sex_on_the_beach>Sex on the Beach</button>
+            <button class=drink id=bahama_mama>Bahama Mama</button>
+            <button class=drink id=pina_colada>Pina Colada</button>
+            <button class=drink id=mai_tai>Mai Tai</button>
+            <button class=drink id=strawberry_daiquiri>Strawberry Daiquiri</button>
+        </div>
+        <div class=modal_2>
+            <div class=drink_info>
+            </div>
+        </div>`
+    )
+}
+
+export async function getDrink(event) {
+    event.preventDefault();
+    const drink = event.target.id;
+    const url = 'https://www.thecocktaildb.com/api/json/v1/1/search.php?s=' + drink;
+    let result;
+    try {
+        result = await axios({
+            method: 'get',
+            url: url
+        })
+    } catch (error) {
+        $('.drink_info').append(`<h3>Something went wrong in pulling your drink. Try again.`);
+        return;
+    }
+
+    console.log(result);
+
+    const d = result.data['drinks'][0];
+    let ingredients = [];
+    let measure = [];
+    for (let i=1; i < 16; i++) {
+        const str = "strIngredient" + i;
+        if (d[str] !== null) {
+            ingredients[i-1] = d[str];
+        }
+        const m = "strMeasure" + i;
+        if (d[m] !== null) {
+            measure[i-1] = d[m];
+        }
+    }
+    let ing = ``;
+    for (let i=0; i < ingredients.length; i++) {
+        if (measure[i]) {
+            ing += `<li>${measure[i]} ${ingredients[i]}</li>`
+        } else {
+            ing += `<li>${ingredients[i]}</li>`
+        }
+    }
+    $('.modal_2').css("display", "block");
+
+    $('.drink_info').append(
+        `<div class=drink_info>
+            <span class="close_drink">&times;</span>
+            <h2>${d.strDrink}</h2>
+            <h5>Ingredients:</h5>
+            <ul id=ingredients></ul>
+            <h5>Instructions:</h5>
+            <p>${d.strInstructions}</p>
+            <h5>Enjoy!</h5>
+            <img src=${d.strDrinkThumb} alt="thumbnail of drink">
+        </div>`
+    )
+    $('#ingredients').append(ing);
+}
+
+export function closeDrink(event) {
+    event.preventDefault();
+    $('.drink_info').empty();
+    $('.modal_2').css("display", "none");
+}
+
+export function addHowToButton() {
+    $('#root').append(
+        `<div class=modal_3>
+            <div class=blackjack_instructions>
+                <span class="close_how_to">&times;</span>
+                <h3>How To Play Blackjack:</h3>
+                <h4>Object of the Game</h4>
+                <p>Player attempts to beat the dealer by getting a count as close to 21 as possible, without going over 21.</p>
+                <h4>Card Values</h4>
+                <p>Face cards (king, queen, jack) are worth 10. Aces are worth 1 or 11, whichever gives player the most points without going over 21 (ex: if an ace is being used as an 11 and player hits and scores over 21, ace will then be counted as a 1).
+                All other cards are worth the number shown on the card.</p>
+                <h4>Betting</h4>
+                <p>Before the deal begins, player chooses how much they want to bet. Minimum bet is 5 tokens and maximum bet is 50 tokens.</p>
+                <h4>The Deal</h4>
+                <p>Card is dealt to player, then to dealer, and then repeated. Dealer's first card is face down. If the player's first two cards are an ace and a "ten-card" (a picture card or 10), giving a count of 21 in two cards, this is a natural or 
+                "blackjack." If any player has a natural and the dealer does not, the dealer immediately pays the player one and a half times the amount of their bet, rounded up if bet is an odd number. If the dealer's face-up card is an ace, 
+                they look at their face-down card to see if the two cards make a natural. If the face-up card is not a ten-card or an ace, they do not look at the face-down card until it is the dealer's turn to play.</p>
+                <h4>The Play</h4>
+                <h6>Basics</h6>
+                <p>The player goes first and must decide whether to "stand" (not ask for another card) or "hit" (ask for another card in an attempt to get closer to a count of 21, or even hit 21 exactly). Thus, a player may stand on the two cards originally dealt to them, 
+                or they may ask the dealer for additional cards, one at a time, until deciding to stand on the total (if it is 21 or under), or goes "bust" (if it is over 21). In the latter case, the player loses and the dealer collects the bet wagered.</p>
+                <h6>Splitting Pairs</h6>
+                <p>If the player's first two cards are of the same denomination, such as two jacks or two sixes, they may choose to treat them as two separate hands when their turn comes around. The amount of the original bet then goes on one of the cards, 
+                and an equal amount must be placed as a bet on the other card. The player first plays the top hand by doubling down or standing or hitting one or more times; only then is the bottom hand played. The two hands are thus treated separately, 
+                and the dealer settles with each on its own merits. A split hand may be split if again the first two cards dealt to the hand are of the same denomination.</p>
+                <h6>Doubling Down</h6>
+                <p>Another option open to the player is doubling their bet. When the player's turn comes, they place a bet equal to the original bet, and the dealer gives the player just one card. The player may double down on a split hand.</p>
+                <h6>Insurance</h6>
+                <p>When the dealer's face-up card is an ace, the player may make a side bet of up to half the initial bet that the dealer's face-down card is a ten-card, and thus a blackjack for the house. Once player decides whether they would like to place the insurance bet, 
+                the dealer looks at the face-down card. If it is a ten-card, it is turned up, and if player placed an insurance bet, player is paid double the amount of their half-bet - a 2 to 1 payoff.</p>
+                <h4>Settlement</h4>
+                <p>If player and dealer both bust or get the same score, player gets to keep their bet. This is called a push. Otherwise, player's hand is compared against dealer's. If player got closer to 21 than the dealer without busting, player wins
+                the amount of their initial bet. Otherwise, if the dealer got closer to 21 without busting, dealer wins and player loses their bet.</p>
+                <br>
+                <p>These instructions were derived from https://bicyclecards.com/how-to-play/blackjack/</p>
+            </div>
+        </div>
+        <div class=how_to>
+            <button id=how_to_button>How To Play Blackjack</button>
+        </div>`
+    )
+}
+
+export function howToWindow(event) {
+    event.preventDefault();
+    $('.modal_3').css("display", "block");
+}
+
+export function closeHowTo(event) {
+    event.preventDefault();
+    $('.modal_3').css("display", "none");
+}
+
+export function openingMessage() {
+    $('#root').append(
+        `<div class=modal_4>
+            <div class=opening_message>
+                <span class="close_opening">&times;</span>
+                <h1>Welcome</h1>
+                <h3>write something ab beaches & drinks & gambling here</h3>
+            </div>
+        </div>`
+    )
+}
+
+export function closeOpeningMessage(event) {
+    event.preventDefault();
+    $('.modal_4').css("display", "none");
+}
 
 $(function() {
     renderBlackjack();
+    openingMessage();
 }) 
