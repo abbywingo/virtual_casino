@@ -14,5 +14,6 @@ Used Firebase Realtime Database to store players' total token count, email, and 
 
 ## Website
 
-Click on link below to launch The Bahama's Bellagio
+Click on link below to launch The Bahama's Bellagio.
+https://abbywingo.github.io/virtual_casino/
 
