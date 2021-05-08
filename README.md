@@ -11,3 +11,8 @@ https://www.thecocktaildb.com/api.php: get drink recipes, ingredients, and image
 
 Used Firebase Authentication to enable players to create an account, login, and sign out.
 Used Firebase Realtime Database to store players' total token count, email, and the number of games played.
+
+## Website
+
+Click on link below to launch The Bahama's Bellagio
+
