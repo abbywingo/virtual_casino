@@ -977,6 +977,7 @@ export function signOut(event) {
     }).catch((error) => {
         $('#display_name').text("Sign out unsuccessful. Try again.");
     })
+    $('#tokens').text("Sign up or log in to see your tokens")
 }
 
 export function addDrinkButtons() {
